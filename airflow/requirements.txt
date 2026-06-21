@@ -1,0 +1,8 @@
+apache-airflow-providers-mysql>=5.7,<6.0
+apache-airflow-providers-postgres>=5.12,<6.0
+apache-airflow-providers-redis>=3.7,<4.0
+pandas>=2.2,<3.0
+sqlalchemy>=1.4,<2.0
+psycopg2-binary>=2.9,<3.0
+mysqlclient>=2.2,<3.0
+python-dotenv>=1.0,<2.0
