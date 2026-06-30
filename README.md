@@ -2,116 +2,116 @@
 
 Centralized data analytics platform for TPVS field agents, missions, transactions, card stock, and moto GPS tracking.
 
-## Phase 0 — Infrastructure (current)
-
-This phase delivers a Docker Compose skeleton with all core services and health-check endpoints. Application logic (models, ETL, dashboard modules) begins in Phase 1.
-
-### Prerequisites
-
-- Docker Engine 24+ and Docker Compose v2
-- Git
-- 8 GB RAM recommended for the full stack
-
-### Quick Start
+## Quick Start
 
 ```bash
-# 1. Clone and enter the project
-cd pfa4e
-
-# 2. Create environment file
 cp .env.example .env
-
-# 3. Start the entire stack
 docker compose up --build -d
-
-# 4. Wait for services to become healthy (~2 min on first boot)
+# Wait ~3 min for migrations + seed data
 docker compose ps
 ```
 
-### Health Check Endpoints
+**Login:** https://localhost → `admin` / `changeme123`
 
-| Service   | URL                              | Expected response        |
-|-----------|----------------------------------|--------------------------|
-| Backend   | http://localhost:8000/api/health/ | `{"status":"ok",...}`  |
-| Frontend  | http://localhost:3000/health       | `{"status":"ok",...}`  |
-| Nginx     | http://localhost/health            | `{"status":"ok",...}`  |
-| Nginx TLS | https://localhost/api/health/      | Backend health (self-signed cert) |
-| Airflow   | http://localhost:8080/health       | Airflow health page    |
+## Architecture
 
-### Service Ports
+| Layer | Technology |
+|-------|------------|
+| Frontend | React + TypeScript + Ant Design + Recharts + Leaflet |
+| Backend | Django REST Framework + JWT + RBAC |
+| OLTP | MySQL 8 |
+| OLAP | PostgreSQL 16 (star schema) |
+| ETL | Apache Airflow 2.9 |
+| Cache | Redis 7 |
+| Proxy | Nginx (TLS) |
 
-| Service            | Port  |
-|--------------------|-------|
-| Nginx (HTTP/HTTPS) | 80, 443 |
-| Django backend     | 8000  |
-| React frontend     | 3000  |
-| Airflow webserver  | 8080  |
-| MySQL              | 3306  |
-| PostgreSQL         | 5432  |
-| Redis              | 6379  |
+## Services
 
-### Airflow Access
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Dashboard (TLS) | https://localhost | admin / changeme123 |
+| API | http://localhost:8000/api/ | JWT |
+| Swagger | http://localhost:8000/api/docs/ | — |
+| Airflow | http://localhost:8080 | .env AIRFLOW_ADMIN_* |
 
-- URL: http://localhost:8080
-- Username / password: values from `.env` (`AIRFLOW_ADMIN_USERNAME` / `AIRFLOW_ADMIN_PASSWORD`)
+## Seed Data
 
-### TLS (Local Development)
-
-Nginx generates a self-signed certificate on first startup. Browsers will show a security warning — accept for local dev. For production, replace files in `nginx/certs/` with real certificates (see `DECISIONS.md` D-003).
-
-### Running Tests Locally
-
-**Backend:**
+On first boot, the backend automatically runs:
 ```bash
-cd backend
-pip install -r requirements.txt
-pytest
-ruff check .
+python manage.py migrate
+python manage.py init_dwh
+python manage.py seed_data --agents 50 --days 180
 ```
 
-**Frontend:**
+Manual re-seed: `docker compose exec backend python manage.py seed_data --flush --agents 50 --days 180`
+
+## Dashboard Modules
+
+1. **Dashboard Exécutif** — KPIs, CA evolution, top agents/stations
+2. **Analyse Transactions** — Filters, payment breakdown, heatmap, anomalies
+3. **Performance Agents** — Ranking, radar chart, composite score
+4. **Suivi Missions** — Completion rates, mission table
+5. **Gestion Stock Cartes** — Levels, threshold alerts, rotation
+6. **État Machines (TPVS)** — Fleet availability, battery alerts
+7. **Suivi Motos & GPS** — Real-time Leaflet map
+8. **Rapports & Exports** — PDF/Excel generation (7 types)
+9. **Détection d'Anomalies** — 6-rule engine
+
+## ETL Pipelines (Airflow)
+
+| DAG | Schedule |
+|-----|----------|
+| etl_transactions | Hourly |
+| etl_stock | 06:00, 18:00 daily |
+| etl_missions | Every 30 min |
+| etl_motos | Every 15 min |
+| etl_performances | Daily 00:00 |
+| rapport_quotidien | Daily 06:00 |
+
+## RBAC Profiles
+
+| Profile | Username | Scope |
+|---------|----------|-------|
+| Super Admin | admin | All |
+| Admin Opérationnel | op.nord | Paris Nord zone |
+| Admin Finance | finance | Financial data |
+| Admin Technique | tech | Machines, motos, stock |
+
+## Documentation
+
+- [Data Dictionary](docs/data_dictionary.md)
+- [ERD](docs/erd.mmd)
+- [KPI Catalog](docs/kpi_catalog.md)
+- [User Guide](docs/user_guide.md)
+- [Engineering Decisions](DECISIONS.md)
+
+## Production MySQL Migration
+
+To connect real production MySQL, update only `.env` connection variables (`MYSQL_*`). No code changes required — see `DECISIONS.md` D-006.
+
+## Tests
+
 ```bash
-cd frontend
-npm install
-npm run lint
-npm run test
-npm run build
-```
+# Backend
+cd backend && pytest
 
-### Project Structure
+# Frontend
+cd frontend && npm test && npm run build
 
-```
-├── backend/          Django REST Framework API
-├── frontend/         React + TypeScript SPA
-├── airflow/          Airflow DAGs and plugins
-├── nginx/            TLS reverse proxy
-├── scripts/          DB init scripts
-├── docs/             Documentation (Phase 1+)
-├── docker-compose.yml
-├── DECISIONS.md      Engineering decisions log
-└── .env.example
-```
-
-### Stopping the Stack
-
-```bash
-docker compose down        # stop containers
-docker compose down -v     # stop + remove volumes (fresh DB)
+# Lint
+cd backend && ruff check .
+cd frontend && npm run lint
 ```
 
 ## Build Phases
 
-| Phase | Scope                                      | Status      |
-|-------|--------------------------------------------|-------------|
-| 0     | Infrastructure & health checks             | ✅ Complete |
-| 1     | Operational models, DWH schema, seed data    | Pending     |
-| 2     | ETL pipelines (Airflow)                    | Pending     |
-| 3     | Analytics API, RBAC, JWT                   | Pending     |
-| 4     | React dashboard (9 modules)                | Pending     |
-| 5     | PDF/Excel reports                          | Pending     |
-| 6     | Anomaly detection                          | Pending     |
-| 7     | Tests, hardening, documentation            | Pending     |
-
-## License
-
-Proprietary — internal use.
+| Phase | Status |
+|-------|--------|
+| 0 — Infrastructure | ✅ |
+| 1 — Models + DWH + Seed | ✅ |
+| 2 — ETL Pipelines | ✅ |
+| 3 — Analytics API + RBAC | ✅ |
+| 4 — React Dashboard (9 modules) | ✅ |
+| 5 — PDF/Excel Reports | ✅ |
+| 6 — Anomaly Detection | ✅ |
+| 7 — Tests + Docs | ✅ |

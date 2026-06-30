@@ -12,6 +12,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES:-false}
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: ${AIRFLOW__WEBSERVER__EXPOSE_CONFIG:-false}
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${AIRFLOW_DB:-airflow_metadata}
+    PYTHONPATH: /app/backend
     MYSQL_HOST: ${MYSQL_HOST:-mysql}
     MYSQL_PORT: ${MYSQL_PORT:-3306}
     MYSQL_DATABASE: ${MYSQL_DATABASE:-tpvs_operational}
@@ -26,6 +27,7 @@ x-airflow-common: &airflow-common
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/plugins:/opt/airflow/plugins
+    - ./backend:/app/backend
     - airflow-logs:/opt/airflow/logs
   depends_on:
     postgres:
@@ -130,6 +132,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - backend-media:/app/media
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
       interval: 30s
@@ -234,3 +238,4 @@ volumes:
   postgres-data:
   redis-data:
   airflow-logs:
+  backend-media:

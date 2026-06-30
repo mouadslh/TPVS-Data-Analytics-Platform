@@ -35,3 +35,27 @@ This document records architectural and implementation decisions made where the 
 - Airflow: built-in `/health` on webserver
 
 **Rationale:** Enables Docker Compose `healthcheck` directives and Phase 0 verification.
+
+### D-008: Custom User model (Phase 1)
+**Decision:** Extended `AbstractUser` as `accounts.User` with UUID PK, matricule, role enum, and zone fields.  
+**Rationale:** Single model covers agents and all 4 admin profiles per Section 6.
+
+### D-009: DWH via SQL init + unmanaged Django models (Phase 1)
+**Decision:** Star schema provisioned via `scripts/postgres/init-dwh.sql` and `manage.py init_dwh`; Django `apps.dwh` uses `managed=False` models for ORM read access.  
+**Rationale:** Keeps OLAP schema independent from Django migrations while enabling test queries.
+
+### D-010: ETL shared utilities in Airflow plugins (Phase 2)
+**Decision:** `airflow/plugins/etl_utils.py` provides connection strings, date enrichment (French holidays via `holidays` lib), dimension sync, and watermark tracking.  
+**Rationale:** DRY across 6 DAGs; idempotent incremental loads via `etl_watermarks` table.
+
+### D-011: KPI layer in `apps.analytics.services.kpis` (Phase 3)
+**Decision:** All KPIs computed as tested Python functions querying operational MySQL, with Redis cache (60s TTL) on API layer.  
+**Rationale:** Single source of truth for KPI catalog; API views are thin wrappers.
+
+### D-012: Report files on disk (Phase 5)
+**Decision:** PDF (ReportLab) + Excel (openpyxl) written to `media/reports/` volume; `Rapport.fichier_url` stores path.  
+**Rationale:** Simple local-first storage; production can swap to S3 via env config later.
+
+### D-013: Anomaly engine as pure Python rules (Phase 6)
+**Decision:** 6 rules in `apps.anomalies.engine.run_all_rules()` called synchronously from API; no separate message queue for local MVP.  
+**Rationale:** Sufficient for local deployment; production can add Celery/Redis pub-sub later.

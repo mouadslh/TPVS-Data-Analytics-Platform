@@ -25,6 +25,13 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
+    "drf_spectacular",
+    "apps.accounts",
+    "apps.operational",
+    "apps.dwh",
+    "apps.analytics",
+    "apps.reports",
+    "apps.anomalies",
     "apps.core",
 ]
 
@@ -38,9 +45,11 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.AuditLogMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
+AUTH_USER_MODEL = "accounts.User"
 
 TEMPLATES = [
     {
@@ -60,7 +69,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Operational database (MySQL)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -81,18 +89,16 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "changeme"),
         "HOST": os.environ.get("POSTGRES_HOST", "postgres"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "OPTIONS": {"options": "-c search_path=dwh,public"},
     },
 }
-
-DATABASE_ROUTERS = []
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        "TIMEOUT": 60,
     }
 }
 
@@ -110,6 +116,8 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = [
@@ -122,43 +130,39 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 REST_FRAMEWORK = {
-    "DEFAULT_RENDERER_CLASSES": [
-        "rest_framework.renderers.JSONRenderer",
-    ],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/minute",
+        "user": "120/minute",
+    },
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(
-        hours=int(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME_HOURS", 8))
-    ),
-    "REFRESH_TOKEN_LIFETIME": timedelta(
-        days=int(os.environ.get("JWT_REFRESH_TOKEN_LIFETIME_DAYS", 30))
-    ),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=int(os.environ.get("JWT_ACCESS_TOKEN_LIFETIME_HOURS", 8))),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.environ.get("JWT_REFRESH_TOKEN_LIFETIME_DAYS", 30))),
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "TPVS Analytics API",
+    "DESCRIPTION": "API d'analyse de données TPVS — missions, transactions, stock, machines, motos",
+    "VERSION": "1.0.0",
 }
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
+        "verbose": {"format": "{levelname} {asctime} {module} {message}", "style": "{"},
     },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
-    },
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
 }

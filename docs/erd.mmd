@@ -1,0 +1,131 @@
+# TPVS Data Warehouse — Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    dim_date ||--o{ fact_transactions : "date_id"
+    dim_agent ||--o{ fact_transactions : "agent_id"
+    dim_station ||--o{ fact_transactions : "station_id"
+    dim_machine ||--o{ fact_transactions : "machine_id"
+    dim_mission ||--o{ fact_transactions : "mission_id"
+    dim_carte ||--o{ fact_transactions : "carte_type_id"
+
+    dim_date ||--o{ fact_missions : "date_id"
+    dim_agent ||--o{ fact_missions : "agent_id"
+    dim_station ||--o{ fact_missions : "station_id"
+
+    dim_date ||--o{ fact_stock : "date_id"
+    dim_station ||--o{ fact_stock : "station_id"
+    dim_carte ||--o{ fact_stock : "carte_type_id"
+
+    dim_date ||--o{ fact_motos : "date_id"
+    dim_agent ||--o{ fact_motos : "agent_id"
+
+    dim_date ||--o{ fact_performances : "date_id"
+    dim_agent ||--o{ fact_performances : "agent_id"
+
+    dim_date {
+        int date_id PK
+        date date UK
+        smallint jour
+        smallint semaine
+        smallint mois
+        smallint trimestre
+        smallint annee
+        smallint jour_semaine
+        boolean est_ferie
+    }
+
+    dim_agent {
+        uuid agent_id PK
+        varchar matricule
+        varchar nom
+        varchar prenom
+        varchar zone_affectation
+        smallint niveau_accreditation
+        varchar statut
+    }
+
+    dim_station {
+        uuid station_id PK
+        varchar nom
+        varchar type_station
+        varchar coords_gps
+        varchar statut
+        text lignes_desservies
+    }
+
+    dim_machine {
+        uuid machine_id PK
+        varchar numero_serie
+        varchar modele
+        varchar statut
+        smallint batterie
+    }
+
+    dim_mission {
+        uuid mission_id PK
+        varchar zone_couverture
+        varchar statut
+        text description
+    }
+
+    dim_carte {
+        int carte_type_id PK
+        varchar type_carte UK
+        varchar description
+    }
+
+    fact_transactions {
+        uuid transaction_id PK
+        int date_id FK
+        uuid agent_id FK
+        uuid station_id FK
+        uuid machine_id FK
+        uuid mission_id FK
+        int carte_type_id FK
+        numeric montant
+        varchar type_paiement
+        varchar statut_validation
+        varchar statut_sync
+        varchar numero_transaction
+    }
+
+    fact_missions {
+        serial id PK
+        uuid mission_id
+        int date_id FK
+        int duree_minutes
+        numeric taux_completion
+    }
+
+    fact_stock {
+        serial id PK
+        int date_id FK
+        uuid station_id FK
+        int carte_type_id FK
+        int quantite_actuelle
+        boolean alerte_seuil
+    }
+
+    fact_motos {
+        serial id PK
+        uuid moto_id
+        int date_id FK
+        numeric kilometrage
+        smallint niveau_batterie
+    }
+
+    fact_performances {
+        serial id PK
+        int date_id FK
+        uuid agent_id FK
+        int nb_transactions
+        numeric montant_total
+        numeric score_performance
+    }
+```
+
+## Source Systems
+
+- **Operational (MySQL):** `utilisateur`, `station`, `machine`, `mission`, `transaction`, `stock_carte`, `moto`
+- **DWH (PostgreSQL schema `dwh`):** Star schema above, populated by Airflow ETL DAGs

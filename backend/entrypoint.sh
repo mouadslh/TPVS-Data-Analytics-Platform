@@ -46,7 +46,11 @@ except Exception:
   sleep 2
 done
 
-python manage.py migrate --noinput 2>/dev/null || true
+python manage.py migrate --noinput
+
+# Initialize DWH schema and seed data on first boot
+python manage.py init_dwh 2>/dev/null || true
+python manage.py seed_data --agents 50 --days 180 2>/dev/null || true
 
 exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \

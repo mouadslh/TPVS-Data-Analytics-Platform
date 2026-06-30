@@ -118,4 +118,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate DAG syntax
-        run: python -m py_compile airflow/dags/health_check.py
+        run: |
+          for f in airflow/dags/*.py; do
+            python -m py_compile "$f"
+          done
